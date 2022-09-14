@@ -1,0 +1,7 @@
+// 11d1wr3c1/ec21ce1/ec1ee
+a = a *b % c / a; //dadad / b
+
+/* qwfqw
+ a = a * b;
+ a = a /b ;
+ */
