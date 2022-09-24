@@ -101,6 +101,7 @@ vector<string> lexer() {
                     }
                     else {
                         if (ch == '/') break;
+                        else if (ch == '*') status = 1;
                         else status = 0;
                     }
                 }
