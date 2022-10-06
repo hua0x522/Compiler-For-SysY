@@ -6,7 +6,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include "token.h"
 using namespace std; 
-vector<string> lexer();
+vector<Token> lexer();
 bool isDigit(char);
 #endif

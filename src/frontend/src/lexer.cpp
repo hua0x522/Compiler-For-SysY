@@ -1,9 +1,65 @@
 #include "lexer.h"
+#include "token.h"
+#include <map>
 
-void clearToken(vector<string>& tokens, vector<char>& token) {
+int line = 1;
+
+map<string, string> typeMap;
+
+string getType(string str) {
+    if (typeMap.count(str)) {
+        return typeMap[str];
+    }
+    else {
+        if (str[0] == '\"') return "STRCON";
+        else if (isDigit(str[0])) return "INTCON";
+        else return "IDENFR";
+    }
+}
+
+void initMap() {
+    typeMap["main"] = "MAINTK";
+    typeMap["const"] = "CONSTTK";
+    typeMap["int"] = "INTTK";
+    typeMap["break"] = "BREAKTK";
+    typeMap["continue"] = "CONTINUETK";
+    typeMap["if"] = "IFTK";    
+    typeMap["else"] = "ELSETK";
+    typeMap["!"] = "NOT";
+    typeMap["&&"] = "AND";
+    typeMap["||"] = "OR";
+    typeMap["while"] = "WHILETK";
+    typeMap["getint"] = "GETINTTK";
+    typeMap["printf"] = "PRINTFTK";
+    typeMap["return"] = "RETURNTK";
+    typeMap["+"] = "PLUS";
+    typeMap["-"] = "MINU";
+    typeMap["void"] = "VOIDTK";
+    typeMap["*"] = "MULT";
+    typeMap["/"] = "DIV";   
+    typeMap["%"] = "MOD"; 
+    typeMap["<"] = "LSS";
+    typeMap["<="] = "LEQ";
+    typeMap[">"] = "GRE";
+    typeMap[">="] = "GEQ";
+    typeMap["=="] = "EQL";
+    typeMap["!="] = "NEQ";
+    typeMap["="] = "ASSIGN";
+    typeMap[";"] = "SEMICN";
+    typeMap[","] = "COMMA";
+    typeMap["("] = "LPARENT";
+    typeMap[")"] = "RPARENT";
+    typeMap["["] = "LBRACK";
+    typeMap["]"] = "RBRACK";
+    typeMap["{"] = "LBRACE";
+    typeMap["}"] = "RBRACE"; 
+}
+
+void clearToken(vector<Token>& tokens, vector<char>& token) {
     if (token.size() > 0) {
         string str(token.begin(), token.end());
-        tokens.push_back(str);
+        Token t(str, getType(str), line);
+        tokens.push_back(t);
         token.clear();
     }
 }
@@ -32,14 +88,16 @@ bool isOp(char ch) {
     return (ch == '+' || ch == '-' || ch == '*' || ch == '%');
 }
 
-vector<string> lexer() {
-    vector<string> tokens;
+vector<Token> lexer() {
+    initMap();
+    vector<Token> tokens;
     FILE* fp = fopen("testfile.txt", "r");
     vector<char> token;
     char ch = getc(fp);
     while(!feof(fp)) {
         if (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
             clearToken(tokens, token);
+            if (ch == '\n') line++;
         }
         else if (isCase(ch) || isDigit(ch)) {
             token.push_back(ch);
@@ -91,11 +149,13 @@ vector<string> lexer() {
                 while (ch != '\n') {
                     ch = getc(fp);
                 }
+                line++;
             }
             else if (ch == '*') {
                 int status = 0;
                 while(1) {
                     ch = getc(fp);
+                    if (ch == '\n') line++;
                     if (status == 0) {
                         if (ch == '*') status = 1;
                     }
