@@ -146,7 +146,7 @@ vector<Token> lexer() {
             clearToken(tokens, token);
             ch = getc(fp);
             if (ch == '/') {
-                while (ch != '\n') {
+                while (ch != '\n' && ch != EOF) {
                     ch = getc(fp);
                 }
                 line++;

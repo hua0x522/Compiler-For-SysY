@@ -1,17 +1,27 @@
 #include "analyser.h"
 #include "token.h"
+#include "check.h"
+
+Token pretk;
 
 void readStr(Node* node, vector<Token>& tokens, string target) {
     Node* son; 
     if (target == tokens[0].val) {
         son = new Node(tokens[0], node);
+        pretk = tokens[0];
         tokens.erase(tokens.begin());  
     }
-    else son = new Node("<error>", node);
+    else {
+        son = new Node(target, node);
+        if (target == ";") err_log("i", pretk.line);
+        if (target == ")") err_log("j", pretk.line);
+        if (target == "]") err_log("k", pretk.line);
+    }
 }
 
 void readStr(Node* node, vector<Token>& tokens) {
     Node* son = new Node(tokens[0], node);
+    pretk = tokens[0];
     tokens.erase(tokens.begin());  
 }
 
@@ -59,7 +69,7 @@ void ConstDef(Node* node, vector<Token>& tokens) {
     Node* son;
     readStr(node, tokens);  //IDENFR
     while (tokens[0].val == "[") {
-        readStr(node, tokens);
+        readStr(node, tokens, "[");
         son = new Node("<ConstExp>", node);
         ConstExp(son, tokens);
         readStr(node, tokens, "]");
@@ -72,15 +82,15 @@ void ConstDef(Node* node, vector<Token>& tokens) {
 void ConstInitVal(Node* node, vector<Token>& tokens) {
     Node* son;
     if (tokens[0].val == "{") {  
-        readStr(node, tokens);
+        readStr(node, tokens, "{");
         if (tokens[0].val == "}") {
-            readStr(node, tokens);
+            readStr(node, tokens, "}");
         }
         else {
             son = new Node("<ConstInitVal>", node);
             ConstInitVal(son, tokens);
             while (tokens[0].val == ",") {
-                readStr(node, tokens);
+                readStr(node, tokens, ",");
                 son = new Node("<ConstInitVal>", node);
                 ConstInitVal(son, tokens);
             }
@@ -91,111 +101,6 @@ void ConstInitVal(Node* node, vector<Token>& tokens) {
         son = new Node("<ConstExp>", node);
         ConstExp(son, tokens);
     }
-}
-
-void ConstExp(Node* node, vector<Token>& tokens) {
-    Node* son = new Node("<AddExp>", node);
-    AddExp(son, tokens);
-}
-
-void AddExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<MulExp>", node);
-    MulExp(son, tokens);
-    while (tokens[0].val == "-" || tokens[0].val == "+") {
-        readStr(node, tokens);
-        son = new Node("<MulExp>", node);
-        MulExp(son, tokens);
-    }
-}
-
-void MulExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<UnaryExp>", node);
-    UnaryExp(son, tokens);
-    while (tokens[0].val == "*" || tokens[0].val == "/" || tokens[0].val == "%") {
-        readStr(node, tokens);
-        son = new Node("<UnaryExp>", node);
-        UnaryExp(son, tokens);
-    }
-}
-
-void UnaryExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    if (tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
-        son = new Node("<UnaryOp>", node);
-        UnaryOp(son, tokens); 
-        son = new Node("<UnaryExp>", node);
-        UnaryExp(son, tokens);
-    }
-    else if (tokens[0].val == "(" || tokens[0].tp == "INTCON") {
-        son = new Node("<PrimaryExp>", node);
-        PrimaryExp(son, tokens);
-    }
-    else if (tokens[0].tp == "IDENFR") {
-        if (tokens[1].val == "(") { 
-            readStr(node, tokens);  //IDENFR
-            readStr(node, tokens); 
-            if (tokens[0].val == ")") {
-                readStr(node, tokens);
-            }
-            else {
-                son = new Node("<FuncRParams>", node);
-                FuncRParams(son, tokens);
-                readStr(node, tokens, ")");
-            }
-        }
-        else {
-            son = new Node("<PrimaryExp>", node);
-            PrimaryExp(son, tokens);
-        }
-    }
-}
-
-void UnaryOp(Node* node, vector<Token>& tokens) {
-    if (tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
-        readStr(node, tokens);
-    }
-}
-
-void PrimaryExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    if (tokens[0].val == "(") {
-        readStr(node, tokens); 
-        son = new Node("<Exp>", node);
-        Exp(son, tokens);
-        readStr(node, tokens, ")");
-    }
-    else if (tokens[0].tp == "IDENFR") {
-        son = new Node("<LVal>", node);
-        LVal(son, tokens);
-    }
-    else if (tokens[0].tp == "INTCON") {
-        son = new Node("<Number>", node);
-        Number(son, tokens);
-    }
-}
-
-void LVal(Node* node, vector<Token>& tokens) {
-    Node* son;
-    readStr(node, tokens);  //IDENFR
-    while (tokens[0].val == "[") {
-        readStr(node, tokens); 
-        son = new Node("<Exp>", node);
-        Exp(son, tokens);
-        readStr(node, tokens, "]");
-    }
-}
-
-void Number(Node* node, vector<Token>& tokens) {
-    if (tokens[0].tp == "INTCON") {
-        readStr(node, tokens);
-    }
-}
-
-void Exp(Node* node, vector<Token>& tokens) {
-    Node* son = new Node("<AddExp>", node);
-    AddExp(son, tokens);
 }
 
 void VarDecl(Node* node, vector<Token>& tokens) {
@@ -221,7 +126,7 @@ void VarDef(Node* node, vector<Token>& tokens) {
         readStr(node, tokens, "]");
     }
     if (tokens[0].val == "=") {
-        readStr(node, tokens);
+        readStr(node, tokens, "=");
         son = new Node("<InitVal>", node);
         InitVal(son, tokens);
     }
@@ -261,10 +166,23 @@ void FuncDef(Node* node, vector<Token>& tokens) {
         readStr(node, tokens);
     }
     else {
-        son = new Node("<FuncFParams>", node);
-        FuncFParams(son, tokens);
-        readStr(node, tokens, ")");
+        if (tokens[0].val == "{") readStr(node, tokens, ")");
+        else {
+            son = new Node("<FuncFParams>", node);
+            FuncFParams(son, tokens);
+            readStr(node, tokens, ")");
+        }
     }
+    son = new Node("<Block>", node);
+    Block(son, tokens);
+}
+
+void MainFuncDef(Node* node, vector<Token>& tokens) {
+    Node* son;
+    readStr(node, tokens, "int");
+    readStr(node, tokens, "main");
+    readStr(node, tokens, "(");
+    readStr(node, tokens, ")");
     son = new Node("<Block>", node);
     Block(son, tokens);
 }
@@ -291,10 +209,10 @@ void FuncFParam(Node* node, vector<Token>& tokens) {
     readStr(node, tokens, "int");
     readStr(node, tokens);  //IDENFR
     if (tokens[0].val == "[") {
-        readStr(node, tokens);
+        readStr(node, tokens, "[");
         readStr(node, tokens, "]");
         while (tokens[0].val == "[") {
-            readStr(node, tokens);
+            readStr(node, tokens, "[");
             son = new Node("<ConstExp>", node);
             ConstExp(son, tokens);
             readStr(node, tokens, "]");
@@ -370,7 +288,8 @@ void Stmt(Node* node, vector<Token>& tokens) {
     }
     else if (tokens[0].val == "return") {
         readStr(node, tokens);
-        if (tokens[0].val != ";") {
+        if (tokens[0].tp == "IDENFR" || tokens[0].tp == "INTCON" || tokens[0].val == "("
+        || tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
             son = new Node("<Exp>", node);
             Exp(son, tokens);
         }
@@ -397,7 +316,7 @@ void Stmt(Node* node, vector<Token>& tokens) {
         if (tokens[0].val == "=") {
             node->add(findLVal(son));
             node->del(son);
-            readStr(node, tokens);
+            readStr(node, tokens, "=");
             if (tokens[0].val == "getint") {
                 readStr(node, tokens);
                 readStr(node, tokens, "(");
@@ -414,9 +333,156 @@ void Stmt(Node* node, vector<Token>& tokens) {
     }
 }
 
+void Exp(Node* node, vector<Token>& tokens) {
+    Node* son = new Node("<AddExp>", node);
+    AddExp(son, tokens);
+}
+
 void Cond(Node* node, vector<Token>& tokens) {
     Node* son = new Node("<LOrExp>", node);
     LOrExp(son, tokens); 
+}
+
+void LVal(Node* node, vector<Token>& tokens) {
+    Node* son;
+    readStr(node, tokens);  //IDENFR
+    while (tokens[0].val == "[") {
+        readStr(node, tokens); 
+        son = new Node("<Exp>", node);
+        Exp(son, tokens);
+        readStr(node, tokens, "]");
+    }
+}
+
+void PrimaryExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    if (tokens[0].val == "(") {
+        readStr(node, tokens); 
+        son = new Node("<Exp>", node);
+        Exp(son, tokens);
+        readStr(node, tokens, ")");
+    }
+    else if (tokens[0].tp == "IDENFR") {
+        son = new Node("<LVal>", node);
+        LVal(son, tokens);
+    }
+    else if (tokens[0].tp == "INTCON") {
+        son = new Node("<Number>", node);
+        Number(son, tokens);
+    }
+}
+
+void Number(Node* node, vector<Token>& tokens) {
+    if (tokens[0].tp == "INTCON") {
+        readStr(node, tokens);
+    }
+}
+
+void UnaryExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    if (tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
+        son = new Node("<UnaryOp>", node);
+        UnaryOp(son, tokens); 
+        son = new Node("<UnaryExp>", node);
+        UnaryExp(son, tokens);
+    }
+    else if (tokens[0].val == "(" || tokens[0].tp == "INTCON") {
+        son = new Node("<PrimaryExp>", node);
+        PrimaryExp(son, tokens);
+    }
+    else if (tokens[0].tp == "IDENFR") {
+        if (tokens[1].val == "(") { 
+            readStr(node, tokens);  //IDENFR
+            readStr(node, tokens, "("); 
+            if (tokens[0].val == ")") {
+                readStr(node, tokens, ")");
+            }
+            else {
+                if (tokens[0].tp == "IDENFR" || tokens[0].tp == "INTCON" || tokens[0].val == "("
+                    || tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
+                    son = new Node("<FuncRParams>", node);
+                    FuncRParams(son, tokens);
+                }
+                readStr(node, tokens, ")");
+            }
+        }
+        else {
+            son = new Node("<PrimaryExp>", node);
+            PrimaryExp(son, tokens);
+        }
+    }
+}
+
+void UnaryOp(Node* node, vector<Token>& tokens) {
+    if (tokens[0].val == "+" || tokens[0].val == "-" || tokens[0].val == "!") {
+        readStr(node, tokens);
+    }
+}
+
+void FuncRParams(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<Exp>", node);
+    Exp(son, tokens);
+    while (tokens[0].val == ",") {
+        readStr(node, tokens, ",");
+        son = new Node("<Exp>", node);
+        Exp(son, tokens);
+    }
+}
+
+void MulExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<UnaryExp>", node);
+    UnaryExp(son, tokens);
+    while (tokens[0].val == "*" || tokens[0].val == "/" || tokens[0].val == "%") {
+        readStr(node, tokens);
+        son = new Node("<UnaryExp>", node);
+        UnaryExp(son, tokens);
+    }
+}
+
+void AddExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<MulExp>", node);
+    MulExp(son, tokens);
+    while (tokens[0].val == "-" || tokens[0].val == "+") {
+        readStr(node, tokens);
+        son = new Node("<MulExp>", node);
+        MulExp(son, tokens);
+    }
+}
+
+void RelExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<AddExp>", node);
+    AddExp(son, tokens);
+    while (tokens[0].val == "<" || tokens[0].val == "<=" || tokens[0].val == ">" || tokens[0].val == ">=") {
+        readStr(node, tokens); 
+        son = new Node("<AddExp>", node);
+        AddExp(son, tokens);
+    } 
+}
+
+void EqExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<RelExp>", node);
+    RelExp(son, tokens);
+    while (tokens[0].val == "==" || tokens[0].val == "!=") {
+        readStr(node, tokens);
+        son = new Node("<RelExp>", node);
+        RelExp(son, tokens);
+    }
+} 
+
+void LAndExp(Node* node, vector<Token>& tokens) {
+    Node* son;
+    son = new Node("<EqExp>", node);
+    EqExp(son, tokens);
+    while (tokens[0].val == "&&") {
+        readStr(node, tokens);
+        son = new Node("<EqExp>", node);
+        EqExp(son, tokens);
+    }
 }
 
 void LOrExp(Node* node, vector<Token>& tokens) {
@@ -430,59 +496,9 @@ void LOrExp(Node* node, vector<Token>& tokens) {
     }
 }
 
-void LAndExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<EqExp>", node);
-    EqExp(son, tokens);
-    while (tokens[0].val == "&&") {
-        readStr(node, tokens);
-        son = new Node("<EqExp>", node);
-        EqExp(son, tokens);
-    }
-}
-
-void EqExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<RelExp>", node);
-    RelExp(son, tokens);
-    while (tokens[0].val == "==" || tokens[0].val == "!=") {
-        readStr(node, tokens);
-        son = new Node("<RelExp>", node);
-        RelExp(son, tokens);
-    }
-}
-
-
-void RelExp(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<AddExp>", node);
+void ConstExp(Node* node, vector<Token>& tokens) {
+    Node* son = new Node("<AddExp>", node);
     AddExp(son, tokens);
-    while (tokens[0].val == "<" || tokens[0].val == "<=" || tokens[0].val == ">" || tokens[0].val == ">=") {
-        readStr(node, tokens); 
-        son = new Node("<AddExp>", node);
-        AddExp(son, tokens);
-    } 
-} 
-
-void FuncRParams(Node* node, vector<Token>& tokens) {
-    Node* son;
-    son = new Node("<Exp>", node);
-    Exp(son, tokens);
-    while (tokens[0].val == ",") {
-        readStr(node, tokens);
-        son = new Node("<Exp>", node);
-        Exp(son, tokens);
-    }
-}
-
-void MainFuncDef(Node* node, vector<Token>& tokens) {
-    Node* son;
-    readStr(node, tokens, "int");
-    readStr(node, tokens, "main");
-    readStr(node, tokens, "(");
-    readStr(node, tokens, ")");
-    son = new Node("<Block>", node);
-    Block(son, tokens);
 }
 
 void print_tree(Node* node, FILE* fp) {
@@ -503,12 +519,25 @@ void print_tree(Node* node, FILE* fp) {
     }
 }
 
-void LL() {
-    vector<Token> tokens = lexer(); 
+void toString(Node* node) {
+    // printf("%p\n", node);
+    if (!node->sons.size()) {
+        printf("%s ",node->token.val.c_str());
+        return;
+    }
+    for (int i = 0; i < node->sons.size(); i++) {
+        toString(node->sons[i]);
+    }
+}
+
+Node* LL(vector<Token> tokens) {
     vector<Token> q(tokens);
     Node* root = new Node("<CompUnit>", NULL);  
     CompUnit(root, q);
-    FILE* fp = fopen("output.txt", "w");
-    print_tree(root, fp);
-    fclose(fp); 
+    // FILE* fp = fopen("output.txt", "w");
+    // print_tree(root, fp);
+    // fclose(fp); 
+    // toString(root);
+    // printf("\n");
+    return root;
 }

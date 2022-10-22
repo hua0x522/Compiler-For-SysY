@@ -5,10 +5,7 @@
 #include "lexer.h"
 #include "node.h"
 
-void LL();
-
-string getType(string);
-void initMap();
+Node* LL(vector<Token>);
 
 void CompUnit(Node*, vector<Token>&);
 void Decl(Node*, vector<Token>&);
