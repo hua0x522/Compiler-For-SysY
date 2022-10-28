@@ -1,0 +1,261 @@
+declare i32 @getint()
+declare void @putint(i32)
+declare void @putch(i32)
+    @Mod = constant i32 389
+    @N = constant i32 100005
+    @a_to_the_a = global i32 0
+    @cnt = global i32 0
+    @n = global i32 0
+define void @move(i32 %x1, i32 %x3) {
+    %x2 = alloca i32
+    store i32 %x1, i32* %x2
+    %x4 = alloca i32
+    store i32 %x3, i32* %x4
+    %x5 = load i32, i32* @cnt
+    %x6 = add i32 %x5, 1
+    store i32 %x6, i32* @cnt
+    ret void
+}
+define void @hanoi(i32 %x7, i32 %x9, i32 %x11, i32 %x13) {
+    %x8 = alloca i32
+    store i32 %x7, i32* %x8
+    %x10 = alloca i32
+    store i32 %x9, i32* %x10
+    %x12 = alloca i32
+    store i32 %x11, i32* %x12
+    %x14 = alloca i32
+    store i32 %x13, i32* %x14
+    %x15 = load i32, i32* %x8
+    %x16 = sub i32 %x15, 1
+    %x17 = load i32, i32* %x10
+    %x18 = load i32, i32* %x14
+    %x19 = load i32, i32* %x12
+    call void @hanoi(i32 %x16, i32 %x17, i32 %x18, i32 %x19)
+    %x20 = load i32, i32* %x10
+    %x21 = load i32, i32* %x14
+    call void @move(i32 %x20, i32 %x21)
+    %x22 = load i32, i32* %x8
+    %x23 = sub i32 %x22, 1
+    %x24 = load i32, i32* %x12
+    %x25 = load i32, i32* %x10
+    %x26 = load i32, i32* %x14
+    call void @hanoi(i32 %x23, i32 %x24, i32 %x25, i32 %x26)
+    ret void
+}
+define i32 @qpow(i32 %x27, i32 %x29) {
+    %x28 = alloca i32
+    store i32 %x27, i32* %x28
+    %x30 = alloca i32
+    store i32 %x29, i32* %x30
+    %x31 = alloca i32
+    store i32 1, i32* %x31
+    %x32 = load i32, i32* %x31
+    ret i32 %x32
+}
+define i32 @gcd(i32 %x33, i32 %x35) {
+    %x34 = alloca i32
+    store i32 %x33, i32* %x34
+    %x36 = alloca i32
+    store i32 %x35, i32* %x36
+    %x38 = load i32, i32* %x36
+    %x39 = load i32, i32* %x34
+    %x40 = load i32, i32* %x36
+    %x41 = srem i32 %x39, %x40
+    %x37 = call i32 @gcd(i32 %x38, i32 %x41)
+    ret i32 %x37
+}
+define i32 @testExp() {
+    %x42 = load i32, i32* @n
+    %x43 = load i32, i32* @n
+    %x44 = mul i32 %x42, %x43
+    store i32 %x44, i32* @a_to_the_a
+    %x45 = alloca i32
+    %x46 = load i32, i32* @N
+    %x47 = load i32, i32* @n
+    %x48 = sdiv i32 %x46, %x47
+    store i32 %x48, i32* %x45
+    %x49 = load i32, i32* @n
+    %x50 = load i32, i32* @n
+    %x51 = mul i32 %x49, %x50
+    %x52 = load i32, i32* @n
+    %x53 = sdiv i32 %x51, %x52
+    %x54 = load i32, i32* @n
+    %x55 = add i32 %x53, %x54
+    %x56 = load i32, i32* @n
+    %x57 = sub i32 %x55, %x56
+    %x58 = alloca i32
+    %x59 = load i32, i32* @a_to_the_a
+    %x60 = add i32 %x59, 1
+    store i32 %x60, i32* %x58
+    %x61 = alloca i32
+    %x62 = sub i32 0, 2147483647
+    %x63 = sub i32 0, %x62
+    store i32 %x63, i32* %x61
+    %x64 = alloca i32
+    %x65 = sub i32 0, 1
+    %x66 = load i32, i32* %x61
+    %x67 = sub i32 %x65, %x66
+    store i32 %x67, i32* %x64
+    %x68 = alloca i32
+    %x69 = load i32, i32* @a_to_the_a
+    %x70 = sub i32 0, %x69
+    %x71 = sub i32 1, %x70
+    %x72 = load i32, i32* %x58
+    %x73 = mul i32 %x71, %x72
+    %x74 = sdiv i32 %x73, 3
+    %x75 = sub i32 %x74, 2
+    %x76 = load i32, i32* @N
+    %x77 = add i32 %x75, %x76
+    %x78 = load i32, i32* @Mod
+    %x79 = srem i32 %x77, %x78
+    store i32 %x79, i32* %x68
+    %x80 = alloca i32
+    %x82 = load i32, i32* @a_to_the_a
+    %x83 = load i32, i32* %x58
+    %x81 = call i32 @qpow(i32 %x82, i32 %x83)
+    store i32 %x81, i32* %x80
+    store i32 10, i32* %x58
+    store i32 0, i32* %x61
+    store i32 7, i32* %x58
+    store i32 8, i32* %x61
+    %x84 = load i32, i32* %x58
+    %x85 = load i32, i32* %x61
+    call void @putch(i32 98)
+    call void @putch(i32 108)
+    call void @putch(i32 111)
+    call void @putch(i32 99)
+    call void @putch(i32 107)
+    call void @putch(i32 84)
+    call void @putch(i32 101)
+    call void @putch(i32 115)
+    call void @putch(i32 116)
+    call void @putch(i32 58)
+    call void @putch(i32 32)
+    call void @putch(i32 55)
+    call void @putch(i32 32)
+    call void @putch(i32 61)
+    call void @putch(i32 61)
+    call void @putch(i32 32)
+    call void @putint(i32 %x84)
+    call void @putch(i32 44)
+    call void @putch(i32 32)
+    call void @putch(i32 56)
+    call void @putch(i32 32)
+    call void @putch(i32 61)
+    call void @putch(i32 61)
+    call void @putch(i32 32)
+    call void @putint(i32 %x85)
+    call void @putch(i32 10)
+    %x86 = alloca i32
+    store i32 0, i32* %x86
+    %x87 = load i32, i32* %x58
+    %x88 = load i32, i32* %x61
+    call void @putch(i32 98)
+    call void @putch(i32 108)
+    call void @putch(i32 111)
+    call void @putch(i32 99)
+    call void @putch(i32 107)
+    call void @putch(i32 84)
+    call void @putch(i32 101)
+    call void @putch(i32 115)
+    call void @putch(i32 116)
+    call void @putch(i32 58)
+    call void @putch(i32 32)
+    call void @putch(i32 53)
+    call void @putch(i32 32)
+    call void @putch(i32 61)
+    call void @putch(i32 61)
+    call void @putch(i32 32)
+    call void @putint(i32 %x87)
+    call void @putch(i32 44)
+    call void @putch(i32 32)
+    call void @putch(i32 49)
+    call void @putch(i32 50)
+    call void @putch(i32 32)
+    call void @putch(i32 61)
+    call void @putch(i32 61)
+    call void @putch(i32 32)
+    call void @putint(i32 %x88)
+    call void @putch(i32 10)
+    %x89 = alloca i32
+    %x90 = load i32, i32* @n
+    store i32 %x90, i32* %x89
+    %x91 = alloca i32
+    store i32 0, i32* %x91
+    %x92 = load i32, i32* @a_to_the_a
+    %x93 = load i32, i32* %x58
+    %x94 = load i32, i32* %x61
+    %x95 = load i32, i32* %x64
+    %x96 = load i32, i32* %x80
+    call void @putch(i32 69)
+    call void @putch(i32 120)
+    call void @putch(i32 112)
+    call void @putch(i32 116)
+    call void @putch(i32 101)
+    call void @putch(i32 115)
+    call void @putch(i32 116)
+    call void @putch(i32 58)
+    call void @putch(i32 32)
+    call void @putint(i32 %x92)
+    call void @putch(i32 32)
+    call void @putint(i32 %x93)
+    call void @putch(i32 32)
+    call void @putint(i32 %x94)
+    call void @putch(i32 32)
+    call void @putint(i32 %x95)
+    call void @putch(i32 32)
+    call void @putint(i32 %x96)
+    %x97 = load i32, i32* %x89
+    %x98 = load i32, i32* %x91
+    %x99 = load i32, i32* %x68
+    call void @putch(i32 32)
+    call void @putint(i32 %x97)
+    call void @putch(i32 32)
+    call void @putint(i32 %x98)
+    call void @putch(i32 32)
+    call void @putint(i32 %x99)
+    call void @putch(i32 10)
+    %x101 = load i32, i32* %x89
+    %x102 = load i32, i32* %x91
+    %x100 = call i32 @gcd(i32 %x101, i32 %x102)
+    ret i32 %x100
+}
+define i32 @main() {
+    call void @putch(i32 50)
+    call void @putch(i32 48)
+    call void @putch(i32 51)
+    call void @putch(i32 55)
+    call void @putch(i32 51)
+    call void @putch(i32 53)
+    call void @putch(i32 54)
+    call void @putch(i32 57)
+    call void @putch(i32 32)
+    call void @putch(i32 116)
+    call void @putch(i32 104)
+    call void @putch(i32 101)
+    call void @putch(i32 32)
+    call void @putch(i32 109)
+    call void @putch(i32 97)
+    call void @putch(i32 102)
+    call void @putch(i32 105)
+    call void @putch(i32 97)
+    call void @putch(i32 126)
+    call void @putch(i32 10)
+    %x103 = call i32 @getint()
+    store i32 %x103, i32* @n
+    %x104 = load i32, i32* @n
+    call void @hanoi(i32 %x104, i32 1, i32 2, i32 3)
+    %x105 = call i32 @testExp()
+    call void @putch(i32 69)
+    call void @putch(i32 120)
+    call void @putch(i32 112)
+    call void @putch(i32 116)
+    call void @putch(i32 101)
+    call void @putch(i32 115)
+    call void @putch(i32 116)
+    call void @putch(i32 58)
+    call void @putch(i32 32)
+    call void @putint(i32 %x105)
+    call void @putch(i32 10)
+    ret i32 0
+}

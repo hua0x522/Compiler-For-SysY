@@ -1,6 +1,6 @@
-modules := src/frontend
-objects := src/frontend/*.o
-includes := -I./src/frontend/include
+modules := src/frontend src/middle
+objects := src/frontend/*.o src/middle/*.o 
+includes := -I./src/frontend/include -I./src/middle/include
 
 .PHONY: all $(modules) clean
 
@@ -23,5 +23,11 @@ run:
 	./main
 
 zip:
-	zip -q -r 1.zip src; \
+	rm -rf tmp/*; \
+	cp src/frontend/src/*.cpp tmp/ ; \
+	cp src/frontend/include/*.h tmp/ ; \
+	cp src/middle/src/*.cpp tmp/ ; \
+	cp src/middle/include/*.h tmp/ ; \
+	cp src/main.cpp tmp/ ; \
+	zip -q -r 1.zip tmp; \
 	mv 1.zip /mnt/c/Users/wangxuezhu/Desktop
