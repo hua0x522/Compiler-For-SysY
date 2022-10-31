@@ -80,8 +80,8 @@ void gConstDef(Node* node) {
     tab.add(var);
     Type ty("i32", var.flat(), 1);
     Value val(var.reg, ty);
-    Inst inst(1, val);
-    inst.name = (blocks) ? "alloca" : "constant";
+    string name = (blocks) ? "alloca" : "constant";
+    Inst inst(name, 1, val);
     if (inst.name == "alloca") function.add(inst);
     int cnt = (var.flat().size()) ? var.flat()[0] : 1;
     if (inst.name == "constant")  {
@@ -93,19 +93,16 @@ void gConstDef(Node* node) {
     }
     if (val.ty.shape.size() == 0) {
         Value v(cbuf[var.pos], i32);
-        Inst inst(2, v, val);
-        inst.name = "store";
+        Inst inst("store", 2, v, val);
         function.add(inst);
     }
     else {
         for (int i = 0; i < cnt; i++) {
             Value addr(newReg(), i32p);
-            Inst inst1(4, addr, val, Value(0, i32), Value(i, i32));
-            inst1.name = "getelementptr inbounds";
+            Inst inst1("getelementptr inbounds", 4, addr, val, Value(0, i32), Value(i, i32));
             function.add(inst1);
             Value v(cbuf[var.pos+i], i32);
-            Inst inst2(2, v, addr);
-            inst2.name = "store";
+            Inst inst2("store", 2, v, addr);
             function.add(inst2);
         }
     } 
@@ -140,8 +137,8 @@ void gVarDef(Node* node) {
     tab.add(var);
     Type ty("i32", var.flat(), 1);
     Value val(var.reg, ty);
-    Inst inst(1, val);
-    inst.name = (blocks) ? "alloca" : "global";
+    string name = (blocks) ? "alloca" : "global";
+    Inst inst(name, 1, val);
     if (!flag) {
         if (inst.name == "global") inst.ops.push_back(Value(0, i32));
         function.add(inst);
@@ -161,19 +158,16 @@ void gVarDef(Node* node) {
     }
     if (val.ty.shape.size() == 0) {
         Value v = vbuf[var.pos];
-        Inst inst(2, v, val);
-        inst.name = "store";
+        Inst inst("store", 2, v, val);
         function.add(inst);
     }
     else {
         for (int i = 0; i < cnt; i++) {
             Value addr(newReg(), i32p);
-            Inst inst1(4, addr, val, Value(0, i32), Value(i, i32));
-            inst1.name = "getelementptr inbounds";
+            Inst inst1("getelementptr inbounds", 4, addr, val, Value(0, i32), Value(i, i32));
             function.add(inst1);
             Value v = vbuf[var.pos+i];
-            Inst inst2(2, v, addr);
-            inst2.name = "store";
+            Inst inst2("store", 2, v, addr);
             function.add(inst2);
         }
     } 
@@ -199,6 +193,7 @@ void gFuncDef(Node* node) {
         }
         else if ((*it)->token.tp == "IDENFR") {
             ret.reg = "@" + (*it)->token.val;
+            function.ret = ret;
             tab.inScope();
         }
         else if ((*it)->token.val == "<FuncFParams>") gFuncFParams(*it);
@@ -207,11 +202,11 @@ void gFuncDef(Node* node) {
             tab.outScope();
         }
     }
-    function.ret = ret;
 }
 
 void gMainFuncDef(Node* node) {
     Value ret("@main", i32);
+    function.ret = ret;
     tab.inScope();
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
         if ((*it)->token.val == "<Block>") {
@@ -219,7 +214,6 @@ void gMainFuncDef(Node* node) {
             tab.outScope();
         }
     }
-    function.ret = ret;
 }
 
 void gFuncType(Node* node) {
@@ -240,19 +234,19 @@ void gFuncFParam(Node* node) {
     Var var("","int",0);
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
         if ((*it)->token.tp == "IDENFR") var.id = (*it)->token.val;
-        else if ((*it)->token.val == "[") ty.ptr = 1;
+        else if ((*it)->token.val == "[" && (*(it+1))->token.val == "]") {
+            ty.ptr = 1;
+            var.dims.push_back(1);
+        }
         else if ((*it)->token.val == "<ConstExp>") var.dims.push_back(gConstExp(*it));
     }
-    if (ty.ptr == 1) var.dims.push_back(1);
     val.ty = ty;
     function.args.push_back(val);
     ty.ptr++;
     Value addr(newReg(), ty);
-    Inst inst1(1, addr);
-    inst1.name = "alloca";
+    Inst inst1("alloca", 1, addr);
     function.add(inst1);
-    Inst inst2(2, val, addr);
-    inst2.name = "store";
+    Inst inst2("store", 2, val, addr);
     function.add(inst2);
     var.reg = addr.reg;
     tab.add(var);
@@ -278,18 +272,15 @@ void gStmt(Node* node) {
         Value lval = gLVal(*it, true);
         if ((*(it+2))->token.val == "<Exp>") {
             Value exp = gExp(*(it+2));
-            Inst inst(2, exp, lval);
-            inst.name = "store";
+            Inst inst("store", 2, exp, lval);
             function.add(inst);
         }
         else if ((*(it+2))->token.val == "getint") {
             Value v(newReg(), i32);
             Function f = ir.getFunc("@getint");
-            Inst call(2, v, f.ret);
-            call.name = "call";
+            Inst call("call", 2, v, f.ret);
             function.add(call);
-            Inst store(2, v, lval);
-            store.name = "store";
+            Inst store("store", 2, v, lval);
             function.add(store);
         }
     }
@@ -298,15 +289,13 @@ void gStmt(Node* node) {
     else if ((*it)->token.val == "return") {
         if ((*(it+1))->token.val == "<Exp>") {
             Value v = gExp(*(it+1));
-            Inst inst(1, v);
-            inst.name = "ret";
+            Inst inst("ret", 1, v);
             function.add(inst);
         }
         else {
             Type ty("void", vector<int>(), 0);
             Value v(0, ty);
-            Inst inst(1, v);
-            inst.name = "ret";
+            Inst inst("ret", 1, v);
             function.add(inst);
         }
     }
@@ -321,23 +310,20 @@ void gStmt(Node* node) {
         Function pc = ir.getFunc("@putch");
         for (int i = 1; i < s.size()-1; i++) {
             if (s[i] == '%') {
-                Inst inst(2, pi.ret, vals[0]);
-                inst.name = "call";
+                Inst inst("call", 2, pi.ret, vals[0]);
                 function.add(inst);
                 vals.erase(vals.begin());
                 i++;
             }
             else if (s[i] == '\\') {
                 Value c((int)'\n', i32);
-                Inst inst(2, pc.ret, c);
-                inst.name = "call";
+                Inst inst("call", 2, pc.ret, c);
                 function.add(inst);
                 i++;
             }
             else {
                 Value c((int)s[i], i32);
-                Inst inst(2, pc.ret, c);
-                inst.name = "call";
+                Inst inst("call", 2, pc.ret, c);
                 function.add(inst);
             }
         }
@@ -366,15 +352,13 @@ Value gLVal(Node* node, bool isAddr) {
         if (!ty.shape.size()) {
             ty.ptr--;
             res.ty = ty;
-            Inst inst(2, res, val);
-            inst.name = "load";
+            Inst inst("load", 2, res, val);
             function.add(inst);
         }
         else {
             ty.shape.pop_back();
             res.ty = ty;
-            Inst inst(4, res, val, Value(0, i32), Value(0, i32));
-            inst.name = "getelementptr inbounds";
+            Inst inst("getelementptr inbounds", 4, res, val, Value(0, i32), Value(0, i32));
             function.add(inst);
         }
         return res;
@@ -383,8 +367,7 @@ Value gLVal(Node* node, bool isAddr) {
         Type ty = val.ty;
         ty.ptr--;
         Value res(newReg(), ty);
-        Inst inst(2, res, val);
-        inst.name = "load";
+        Inst inst("load", 2, res, val);
         function.add(inst);
         val = res;
     }
@@ -394,26 +377,24 @@ Value gLVal(Node* node, bool isAddr) {
     for (int i = 0; i < ind.size(); i++) {
         v.num /= var.dims[i];
         Value res(newReg(), ty);
-        Inst inst(3, res, ind[i], v);
-        inst.name = (i == 0) ? "mul" : "add";   /*   array dim leq 2   */
+        string name = (i == 0) ? "mul" : "add";   /*   array dim leq 2   */
+        Inst inst(name, 3, res, ind[i], v);
         function.add(inst);
         v = res;
     }
     ty = i32p;
     Value addr(newReg(), ty);
-    Inst inst(2, addr, val);
+    Inst inst("getelementptr inbounds", 2, addr, val);
     if (val.ty.shape.size() != 0) {         //is array
         inst.ops.push_back(Value(0, i32));  /*     array is different from pointer     */
     }
     inst.ops.push_back(v);
-    inst.name = "getelementptr inbounds";
     function.add(inst);
     if (ind.size() < var.dims.size()) isAddr = true;
     if (isAddr) return addr; 
     ty.ptr--;
     Value res(newReg(), ty);
-    Inst inst2(2, res, addr);
-    inst2.name = "load";
+    Inst inst2("load", 2, res, addr);
     function.add(inst2);
     return res;
 }
@@ -445,13 +426,13 @@ Value gUnaryExp(Node* node) {
     }
     else if ((*it)->token.tp == "IDENFR") {
         Function f = ir.getFunc("@" + (*it)->token.val);
-        Inst inst(0);
+        if (f.ret.reg == "") f = function;
+        Inst inst("call", 0);
         if (f.ret.ty.data == "i32") {
             Value res(newReg(), f.ret.ty);
             inst.ops.push_back(res);
         }
         inst.ops.push_back(f.ret);
-        inst.name = "call";
         if ((*(it+2))->token.val == "<FuncRParams>") {
             vector<Value> vals = gFuncRParams(*(it+2));
             for (int i = 0; i < vals.size(); i++) {
@@ -467,8 +448,7 @@ Value gUnaryExp(Node* node) {
         if ((*it)->sons[0]->token.val == "-") {
             Value v1(0, v2.ty);
             Value res(newReg(), v2.ty);
-            Inst inst(3, res, v1, v2);
-            inst.name = "sub";
+            Inst inst("sub", 3, res, v1, v2);
             function.add(inst);
             v2 = res;
         } 
@@ -498,8 +478,7 @@ Value gMulExp(Node* node) {
         else if ((*it)->token.val == "<UnaryExp>") {
             Value v2 = gUnaryExp(*it);
             Value res(newReg(), v1.ty);
-            Inst inst(3, res, v1, v2);
-            inst.name = name;
+            Inst inst(name, 3, res, v1, v2);
             function.add(inst);
             v1 = res;
         }
@@ -516,8 +495,7 @@ Value gAddExp(Node* node) {
         else if ((*it)->token.val == "<MulExp>") {
             Value v2 = gMulExp(*it);
             Value res(newReg(), v1.ty);
-            Inst inst(3, res, v1, v2);
-            inst.name = name;
+            Inst inst(name, 3, res, v1, v2);
             function.add(inst);
             v1 = res;
         }
@@ -525,11 +503,12 @@ Value gAddExp(Node* node) {
     return v1;
 }
 
-void generate(Node* root) {
+IR generate(Node* root) {
     gCompUnit(root);
     FILE* fp = fopen("llvm_ir.txt", "w");
     printIR(fp);
     fclose(fp);
+    return ir;
 }
 
 }

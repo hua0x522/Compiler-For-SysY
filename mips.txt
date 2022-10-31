@@ -1,0 +1,155 @@
+.data
+N: .space 4
+.text
+  li $t0, 555
+  la $t1, N
+  sw $t0, 0($t1)
+  jal main
+  nop
+func:
+  addiu $sp, $sp, -4
+  li $t0, 114500
+  sw $t0, 0($sp)
+  addiu $sp, $sp, -4
+  li $t0, 10
+  sw $t0, 0($sp)
+  lw $t0, 4($sp)
+  lw $t1, 0($sp)
+  addu $t2, $t0, $t1
+  li $t1, 4
+  subu $t0, $t2, $t1
+  li $t2, 8
+  addu $t1, $t0, $t2
+  addiu $sp, $sp, 8
+  move $v0, $t1
+  jr $ra
+  nop
+func2:
+  lw $t0, 0($sp)
+  lw $t1, 4($sp)
+  mul $t2, $t0, $t1
+  lw $t0, 8($sp)
+  addu $t1, $t2, $t0
+  addiu $sp, $sp, 0
+  move $v0, $t1
+  jr $ra
+  nop
+printTotal:
+  lw $t0, 0($sp)
+  lw $t1, 4($sp)
+  addu $t2, $t0, $t1
+  lw $t0, 8($sp)
+  addu $t1, $t2, $t0
+  lw $t0, 0($sp)
+  mul $t2, $t1, $t0
+  move $a0, $t2
+  li $v0, 1
+  syscall
+  li $t0, 10
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  addiu $sp, $sp, 0
+  jr $ra
+  nop
+main:
+  addiu $sp, $sp, -4
+  li $t0, 666
+  sw $t0, 0($sp)
+  li $t0, 50
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 48
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 51
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 55
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 51
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 48
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 53
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 55
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, 10
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  addiu $sp, $sp, -4
+  sw $ra, 0($sp)
+  jal func
+  nop
+  lw $ra, 0($sp)
+  addiu $sp, $sp, 4
+  move $t0, $v0
+  move $a0, $t0
+  li $v0, 1
+  syscall
+  li $t0, 10
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  addiu $sp, $sp, -4
+  sw $ra, 0($sp)
+  addiu $sp, $sp, -12
+  li $t0, 1
+  sw $t0, 0($sp)
+  li $t0, 2
+  sw $t0, 4($sp)
+  li $t0, 3
+  sw $t0, 8($sp)
+  jal func2
+  nop
+  addiu $sp, $sp, 12
+  lw $ra, 0($sp)
+  addiu $sp, $sp, 4
+  move $t0, $v0
+  move $a0, $t0
+  li $v0, 1
+  syscall
+  li $t0, 10
+  move $a0, $t0
+  li $v0, 11
+  syscall
+  li $t0, -2
+  li $t1, -1
+  addiu $sp, $sp, -12
+  sw $t0, 0($sp)
+  sw $t1, 4($sp)
+  sw $ra, 8($sp)
+  addiu $sp, $sp, -12
+  li $t2, 5
+  sw $t2, 0($sp)
+  sw $t0, 4($sp)
+  sw $t1, 8($sp)
+  jal printTotal
+  nop
+  addiu $sp, $sp, 12
+  lw $t0, 0($sp)
+  lw $t1, 4($sp)
+  lw $ra, 8($sp)
+  addiu $sp, $sp, 12
+  lw $t0, 0($sp)
+  move $a0, $t0
+  li $v0, 1
+  syscall
+  addiu $sp, $sp, 4
+  li $v0, 10
+  syscall

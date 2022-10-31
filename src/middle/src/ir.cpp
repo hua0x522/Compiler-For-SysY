@@ -33,7 +33,8 @@ string Value::toString() {
     else return i2s(num);
 }
 
-Inst::Inst(int cnt, ...) {
+Inst::Inst(string n, int cnt, ...) {
+    name = n;
     va_list args;
     va_start(args, cnt);
     for (int i = 0; i < cnt; i++) {
@@ -109,7 +110,7 @@ string Inst::toString() {
     }
     else if (name == "call") {
         auto it = ops.begin();
-        if ((*it).reg[0] != '@') {  // have return
+        if ((*it).reg[0] != '@') {  // have return, must use a temp vreg to get the return val
             s += (*it).toString() + " = ";
             it++;
         }
@@ -203,8 +204,7 @@ void Function::checkRet() {
     }
     Type ty("void", vector<int>(), 0);
     Value v(0, ty);
-    Inst inst(1, v);
-    inst.name = "ret";
+    Inst inst("ret", 1, v);
     add(inst);
 }
 

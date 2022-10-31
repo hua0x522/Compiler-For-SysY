@@ -35,7 +35,7 @@ vector<Value> gFuncRParams(Node*);
 Value gMulExp(Node*);
 Value gAddExp(Node*);
 
-void generate(Node*);
+IR generate(Node*);
 
 /*    tools region     */
 

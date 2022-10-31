@@ -39,7 +39,7 @@ public:
     string name;
     vector<Value> ops;
     Inst() {}
-    Inst(int cnt, ...);
+    Inst(string, int cnt, ...);
     Value getVal(string reg);
     string toString();
 };
