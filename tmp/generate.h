@@ -34,9 +34,16 @@ Value gUnaryExp(Node*);
 vector<Value> gFuncRParams(Node*);
 Value gMulExp(Node*);
 Value gAddExp(Node*);
-
+void gCond(Node*, string, string);
+void gLOrExp(Node*, string, string); 
+void gLAndExp(Node*, string, string);
+Value gEqExp(Node*);
+Value gRelExp(Node*);
 IR generate(Node*);
 
+void putstr(string&);
+void i32toi1(Value&);
+void i1toi32(Value&);
 /*    tools region     */
 
 int conAddExp(Node*);

@@ -9,6 +9,6 @@ int main() {
     Node* root = LL(tokens);
     CHECK::check(root);
     IR ir = GEN::generate(root);
-    TRANS::translate(ir);
+    // TRANS::translate(ir);
     return 0;
 }

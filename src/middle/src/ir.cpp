@@ -22,10 +22,20 @@ string Type::toString() {
     else {
         int num = 1;
         for (int i = 0; i < shape.size(); i++) num *= shape[i];
-        s = "[" + i2s(num) + " x i32]";
+        s = "[" + i2s(num) + " x " + data +"]";
     }
     s += string(ptr, '*');
     return s;
+}
+
+bool Type::like(Type other) {
+    if (data != other.data) return false;
+    if (shape.size() != other.shape.size()) return false;
+    for (int i = 0; i < shape.size(); i++) {
+        if (shape[i] != other.shape[i]) return false;
+    }
+    if (ptr != other.ptr) return false;
+    return true;
 }
 
 string Value::toString() {
@@ -70,13 +80,26 @@ string Inst::toString() {
                 s += " " + ops[1].toString();
             }
         } 
+        else {
+            s += " zeroinitializer";
+        }
     }
     else if (name == "constant") {
         s += ops[0].toString() + " = constant ";
         Type ty = ops[0].ty;
         ty.ptr--;
         s += ty.toString();
-        if (ops[0].ty.shape.size() > 0) {
+        if (ops[0].ty.data == "i8") {
+            s += " c\"";
+            for (int i = 0; i < ops[1].reg.size(); i++) {
+                if (ops[1].reg[i] == '\n') {
+                    s += "\\0a";
+                }
+                else s += string(1, ops[1].reg[i]);
+            }
+            s += "\\00\"";
+        }
+        else if (ops[0].ty.shape.size() > 0) {
             s += " [";
             for (int i = 1; i < ops.size(); i++) {
                 if (i != 1) s += ", ";
@@ -151,6 +174,26 @@ string Inst::toString() {
         s += "ret " + ops[0].ty.toString();
         if (ops[0].ty.toString() != "void") s += " " + ops[0].toString();
     }
+    else if (name == "label") {
+        s += ops[0].toString() + ":";
+    }
+    else if (name == "br") {
+        if (ops.size() == 3) {
+            s += name + " " + ops[0].ty.toString() + " " + ops[0].toString() + ", ";
+            s += "label %" + ops[1].toString() + ", label %" + ops[2].toString(); 
+        }
+        else {
+            s += name + " label %" + ops[0].toString();
+        }
+    }
+    else if (name == "icmp") {
+        s += ops[0].toString() + " = icmp " + ops[1].toString() + " " + ops[2].ty.toString() +
+        " " + ops[2].toString() + ", " + ops[3].toString();
+    }
+    else if (name == "zext") {
+        s += ops[0].toString() + " = zext " + ops[1].ty.toString() + " " + ops[1].toString() + 
+        " to " + ops[0].ty.toString();
+    }
     return s;
 }
 
@@ -168,11 +211,11 @@ Value Blk::getVal(string reg) {
 
 void Function::add(Inst i) { (*(blks.end()-1)).add(i); }
 
-void Function::addBlk() { blks.push_back(Blk( blks.size() )); }
+void Function::addBlk() { blks.push_back(Blk()); }
 
 void Function::clear() {
     blks.clear();
-    blks.push_back(Blk(0));
+    blks.push_back(Blk());
     args.clear();
     ret = Value();
 }
@@ -208,6 +251,34 @@ void Function::checkRet() {
     add(inst);
 }
 
+void Function::divBlk() {
+    if (blks[0].insts[0].name == "label") {
+        Inst br("br", 1, blks[0].insts[0].ops[0]);
+        blks[0].insts.insert(blks[0].insts.begin(), br);
+    }
+    int flag = 0;
+    for (int i = 0; i < blks[0].insts.size(); i++) {
+        if (blks[0].insts[i].name == "label") {
+            if (!flag) flag = i;
+            if (flag) addBlk();    //label index is 0
+        }
+        if (flag) add(blks[0].insts[i]); 
+    }
+    if (!flag) return;
+    while (blks[0].insts.size() > flag) {
+        blks[0].insts.pop_back();
+    }
+    for (int i = 0; i < blks.size(); i++) {
+        if (i == blks.size()-1) break;
+        Inst i1 = blks[i].insts[blks[i].insts.size()-1]; 
+        Inst i2 = blks[i+1].insts[0];
+        if (i1.name != "ret" && i1.name != "br") {
+            Inst inst("br", 1, i2.ops[0]);
+            blks[i].add(inst); 
+        }
+    }
+}
+
 void IR::add(Function f) {
     functions.push_back(f);
 }
@@ -221,6 +292,8 @@ Function IR::getFunc(string reg) {
 }
 
 Value IR::getVal(string reg) {
+    Value val = global.getVal(reg);
+    if (val.reg == reg) return val;
     for (int i = 0; i < functions.size(); i++) {
         Value val = functions[i].getVal(reg);
         if (val.reg == reg) return val;

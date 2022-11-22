@@ -18,6 +18,7 @@ public:
     Type() {}
     Type(string d, vector<int> s, int p): data(d), shape(s), ptr(p) {}
     string toString();
+    bool like(Type);
 };
 
 /*   value maybe a v-reg or a number   */
@@ -47,9 +48,8 @@ public:
 class Blk
 {
 public: 
-    int id;
     vector<Inst> insts;
-    Blk(int i): id(i) {}
+    Blk() {}
     void add(Inst i);
     Value getVal(string reg);
 };
@@ -60,18 +60,20 @@ public:
     vector<Blk> blks;
     vector<Value> args; 
     Value ret;
-    Function() { blks.push_back(Blk(0)); }
+    Function() { blks.push_back(Blk()); }
     void add(Inst i);
     void addBlk();
     void clear();
     Value getVal(string reg);
     string toString();
     void checkRet();
+    void divBlk();
 };
 
 class IR
 {
 public:
+    Blk global;
     vector<Function> functions;
     void add(Function f);
     Function getFunc(string reg);

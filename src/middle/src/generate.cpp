@@ -2,15 +2,21 @@
 
 namespace GEN
 {
-Table tab;
+Table table;
 vector<int> cbuf;
 vector<Value> vbuf;
 int blocks;
 IR ir;
 Function function;
+Blk global;
 string funcType;
 Type i32("i32", vector<int>(), 0);
 Type i32p("i32", vector<int>(), 1);
+Type i1("i1", vector<int>(), 0);
+Type i8("i8", vector<int>(), 0);
+Type i8p("i8", vector<int>(), 1);
+vector<string> while_begin;
+vector<string> while_end;
 
 string newReg() {
     static int regs = 0;
@@ -18,6 +24,38 @@ string newReg() {
     string reg("\%x");
     reg += i2s(regs);
     return reg;
+}
+
+string newLabel() {
+    static int l = 0;
+    l++;
+    string label("br_");
+    label += i2s(l);
+    if (global.getVal("@"+label).reg != "") return newLabel();
+    else return label;
+}
+
+string newStr() {
+    static int cnt = 0;
+    cnt++;
+    string s("@str_");
+    s += i2s(cnt);
+    if (global.getVal(s).reg != "") return newStr();
+    else return s;
+}
+
+void i1toi32(Value& v) {
+    Value res(newReg(), i32);
+    Inst inst("zext", 2, res, v);
+    function.add(inst);
+    v = res;
+}
+
+void i32toi1(Value& v) {
+    Value res(newReg(), i1);
+    Inst inst("icmp", 4, res, Value("ne", i32), v, Value(0, i32));
+    function.add(inst);
+    v = res;
 }
 
 void declare() {
@@ -29,7 +67,9 @@ void declare() {
     f.ret.ty.data = "void";
     f.args.push_back(Value("", i32));
     ir.add(f);
-    f.ret.reg = "@putch";
+    f.ret.reg = "@putstr";
+    f.args.clear();
+    f.args.push_back(Value("", i8p));
     ir.add(f);
 }
 
@@ -40,18 +80,21 @@ void gCompUnit(Node* node) {
         gDecl(*it);
         it++;
     }
-    ir.add(function);
+    ir.global = global;
     function.clear();
     while ((*it)->token.val == "<FuncDef>") {
         gFuncDef(*it);
         it++;
         function.checkRet();
+        function.divBlk();
         ir.add(function);
         function.clear();
     }
     gMainFuncDef(*it);
+    function.divBlk();
     ir.add(function);
     function.clear();
+    ir.global = global; //update constant string 
 }
 
 void gDecl(Node* node) {
@@ -77,7 +120,7 @@ void gConstDef(Node* node) {
         else if ((*it)->token.val == "<ConstInitVal>") gConstInitVal(*it);
     }
     var.reg = (blocks == 0) ? "@" + var.id : newReg();
-    tab.add(var);
+    table.add(var);
     Type ty("i32", var.flat(), 1);
     Value val(var.reg, ty);
     string name = (blocks) ? "alloca" : "constant";
@@ -88,7 +131,7 @@ void gConstDef(Node* node) {
         for (int i = var.pos; i < var.pos + cnt; i++) {
             inst.ops.push_back(Value(cbuf[i], i32));
         }
-        function.add(inst);
+        global.add(inst);
         return;
     }
     if (val.ty.shape.size() == 0) {
@@ -134,14 +177,14 @@ void gVarDef(Node* node) {
         else if ((*it)->token.val == "<InitVal>") flag = 1;
     }
     var.reg = (blocks == 0) ? "@" + var.id : newReg();
-    tab.add(var);
+    table.add(var);
     Type ty("i32", var.flat(), 1);
     Value val(var.reg, ty);
     string name = (blocks) ? "alloca" : "global";
     Inst inst(name, 1, val);
     if (!flag) {
-        if (inst.name == "global") inst.ops.push_back(Value(0, i32));
-        function.add(inst);
+        if (inst.name == "global") global.add(inst);
+        else function.add(inst);
         return;
     }
     if (inst.name == "alloca") function.add(inst);
@@ -153,7 +196,7 @@ void gVarDef(Node* node) {
         for (int i = var.pos; i < var.pos + cnt; i++) {
             inst.ops.push_back(Value(cbuf[i], i32));
         }
-        function.add(inst);
+        global.add(inst);
         return;
     }
     if (val.ty.shape.size() == 0) {
@@ -194,12 +237,12 @@ void gFuncDef(Node* node) {
         else if ((*it)->token.tp == "IDENFR") {
             ret.reg = "@" + (*it)->token.val;
             function.ret = ret;
-            tab.inScope();
+            table.inScope();
         }
         else if ((*it)->token.val == "<FuncFParams>") gFuncFParams(*it);
         else if ((*it)->token.val == "<Block>") {
             gBlock(*it);
-            tab.outScope();
+            table.outScope();
         }
     }
 }
@@ -207,11 +250,11 @@ void gFuncDef(Node* node) {
 void gMainFuncDef(Node* node) {
     Value ret("@main", i32);
     function.ret = ret;
-    tab.inScope();
+    table.inScope();
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
         if ((*it)->token.val == "<Block>") {
             gBlock(*it);
-            tab.outScope();
+            table.outScope();
         }
     }
 }
@@ -249,15 +292,17 @@ void gFuncFParam(Node* node) {
     Inst inst2("store", 2, val, addr);
     function.add(inst2);
     var.reg = addr.reg;
-    tab.add(var);
+    table.add(var);
 }
 
 void gBlock(Node* node) {
+    if (blocks) table.inScope();
     blocks++;
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
         if ((*it)->token.val == "<BlockItem>") gBlockItem(*it);
     }
     blocks--;
+    if (blocks) table.outScope();
 }
 
 void gBlockItem(Node* node) {
@@ -307,27 +352,95 @@ void gStmt(Node* node) {
             else if ((*i)->token.val == "<Exp>") vals.push_back(gExp(*i));
         }
         Function pi = ir.getFunc("@putint");
-        Function pc = ir.getFunc("@putch");
+        string temp;
         for (int i = 1; i < s.size()-1; i++) {
             if (s[i] == '%') {
+                putstr(temp);
                 Inst inst("call", 2, pi.ret, vals[0]);
                 function.add(inst);
                 vals.erase(vals.begin());
                 i++;
             }
             else if (s[i] == '\\') {
-                Value c((int)'\n', i32);
-                Inst inst("call", 2, pc.ret, c);
-                function.add(inst);
+                temp += string(1, '\n');
                 i++;
             }
             else {
-                Value c((int)s[i], i32);
-                Inst inst("call", 2, pc.ret, c);
-                function.add(inst);
+                temp += string(1, s[i]);
             }
         }
+        putstr(temp);
     }
+    else if ((*it)->token.val == "if") {
+        string l1 = newLabel();
+        string l2 = newLabel();
+        gCond(*(it+2), l1, l2);
+        if (node->sons.size() > 5) {
+            string end = newLabel();
+            Inst label1("label", 1, Value(l1, i32));
+            function.add(label1); 
+            gStmt(*(it+4));
+            Inst br("br", 1, Value(end, i32));
+            function.add(br);
+            Inst label2("label", 1, Value(l2, i32));
+            function.add(label2);
+            gStmt(*(it+6));
+            Inst l_end("label", 1, Value(end, i32));
+            function.add(l_end);
+        }
+        else {
+            Inst label1("label", 1, Value(l1, i32));
+            function.add(label1); 
+            gStmt(*(it+4));
+            Inst br("br", 1, Value(l2, i32));
+            function.add(br);
+            Inst label2("label", 1, Value(l2, i32));
+            function.add(label2);
+        }
+    }
+    else if ((*it)->token.val == "while") {
+        string begin = newLabel();
+        string l1 = newLabel();
+        string end = newLabel();
+        while_begin.push_back(begin);
+        while_end.push_back(end);
+        Inst l_begin("label", 1, Value(begin, i32));
+        function.add(l_begin);
+        gCond(*(it+2), l1, end);
+        Inst l_l1("label", 1, Value(l1, i32));
+        function.add(l_l1);
+        gStmt(*(it+4));
+        Inst br("br", 1, Value(begin, i32));
+        function.add(br);
+        Inst l_end("label", 1, Value(end, i32));
+        function.add(l_end);
+        while_begin.pop_back();
+        while_end.pop_back();
+    }
+    else if ((*it)->token.val == "break") {
+        Inst inst("br", 1, Value(*(while_end.end()-1), i32));
+        function.add(inst);
+    }
+    else if ((*it)->token.val == "continue") {
+        Inst inst("br", 1, Value(*(while_begin.end()-1), i32));
+        function.add(inst);
+    }
+}
+
+void putstr(string& temp) {
+    if (!temp.size()) return;
+    string s = newStr();
+    Value str(s, i8p);
+    str.ty.shape.push_back(temp.size()+1);
+    Inst constant("constant", 2, str, Value(temp, i32));
+    global.add(constant);
+    Value res(newReg(), i8p);
+    Inst gep("getelementptr inbounds", 4, res, str, Value(0, i32), Value(0, i32));
+    function.add(gep);
+    Function ps = ir.getFunc("@putstr");
+    Inst call("call", 2, ps.ret, res);
+    function.add(call);
+    temp = "";
 }
 
 Value gExp(Node* node) {
@@ -335,7 +448,7 @@ Value gExp(Node* node) {
 }
 
 Value gLVal(Node* node, bool isAddr) {
-    Var var = tab.findVar(node->sons[0]->token.val);
+    Var var = table.findVar(node->sons[0]->token.val);
     Value val = function.getVal(var.reg);
     if (val.reg == "") val = ir.getVal(var.reg);
     vector<Value> ind;
@@ -446,14 +559,19 @@ Value gUnaryExp(Node* node) {
     else if ((*it)->token.val == "<UnaryOp>") {
         Value v2 = gUnaryExp(*(it+1));
         if ((*it)->sons[0]->token.val == "-") {
-            Value v1(0, v2.ty);
-            Value res(newReg(), v2.ty);
+            Value v1(0, i32);
+            Value res(newReg(), i32);
+            if (v2.ty.like(i1)) i1toi32(v2);
             Inst inst("sub", 3, res, v1, v2);
             function.add(inst);
             v2 = res;
         } 
         else if ((*it)->sons[0]->token.val == "!") {
-            //TODO
+            if (v2.ty.like(i1)) i1toi32(v2);
+            Value res(newReg(), i1);
+            Inst inst("icmp", 4, res, Value("eq", i32), v2, Value(0, i32));
+            function.add(inst);
+            v2 = res;
         }
         return v2;
     }
@@ -477,7 +595,9 @@ Value gMulExp(Node* node) {
         else if ((*it)->token.val == "%") name = "srem";
         else if ((*it)->token.val == "<UnaryExp>") {
             Value v2 = gUnaryExp(*it);
-            Value res(newReg(), v1.ty);
+            Value res(newReg(), i32);
+            if (v1.ty.like(i1)) i1toi32(v1);
+            if (v2.ty.like(i1)) i1toi32(v2);
             Inst inst(name, 3, res, v1, v2);
             function.add(inst);
             v1 = res;
@@ -494,13 +614,101 @@ Value gAddExp(Node* node) {
         else if ((*it)->token.val == "-") name = "sub";
         else if ((*it)->token.val == "<MulExp>") {
             Value v2 = gMulExp(*it);
-            Value res(newReg(), v1.ty);
+            Value res(newReg(), i32);
+            if (v1.ty.like(i1)) i1toi32(v1);
+            if (v2.ty.like(i1)) i1toi32(v2);
             Inst inst(name, 3, res, v1, v2);
             function.add(inst);
             v1 = res;
         }
     }
     return v1;
+}
+
+void gCond(Node* node, string l1, string l2) {
+    auto it = node->sons.begin();
+    gLOrExp(*it, l1, l2); 
+}
+
+void gLOrExp(Node* node, string l1, string l2) {
+    for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
+        if ((*it)->token.val == "<LAndExp>") {
+            if (it+1 != node->sons.end()) {
+                string l = newLabel();
+                gLAndExp(*it, l1, l);
+                Inst label("label", 1, Value(l, i32));
+                function.add(label);
+            }
+            else {
+                gLAndExp(*it, l1, l2);
+            }
+        }
+    }
+}
+
+void gLAndExp(Node* node, string l1, string l2) {
+    for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
+        if ((*it)->token.val == "<EqExp>") {
+            if (it+1 != node->sons.end()) {
+                string l = newLabel();
+                Value v = gEqExp(*it);
+                Inst inst("br", 3, v, Value(l, i32), Value(l2, i32));
+                function.add(inst);
+                Inst label("label", 1, Value(l, i32));
+                function.add(label);
+            }
+            else {
+                Value v = gEqExp(*it);
+                Inst inst("br", 3, v, Value(l1, i32), Value(l2, i32));
+                function.add(inst);
+            }
+        }
+    }
+}
+
+Value gEqExp(Node* node) {
+    auto it = node->sons.begin();
+    Value v0 = gRelExp(*it);
+    it++;
+    while (it != node->sons.end()) {
+        string name;
+        if ((*it)->token.val == "==") name = "eq";
+        else name = "ne";
+        it++;
+        Value v = gRelExp(*it);
+        if (v0.ty.like(i1)) i1toi32(v0); 
+        if (v.ty.like(i1)) i1toi32(v);
+        Value res(newReg(), i1);
+        Inst inst("icmp", 4, res, Value(name, i32), v0, v);
+        function.add(inst);
+        v0 = res;
+        it++;
+    }
+    if (v0.ty.like(i32)) i32toi1(v0);
+    return v0;
+}
+
+Value gRelExp(Node* node) {
+    auto it = node->sons.begin();
+    Value v0 = gAddExp(*it);
+    it++;
+    while (it != node->sons.end()) {
+        string name;
+        if ((*it)->token.val == ">=") name = "sge";
+        else if ((*it)->token.val == ">") name = "sgt";
+        else if ((*it)->token.val == "<=") name = "sle";
+        else name = "slt";
+        it++;
+        Value v = gAddExp(*it);
+        if (v0.ty.like(i1)) i1toi32(v0); 
+        if (v.ty.like(i1)) i1toi32(v);
+        Value res(newReg(), i1);
+        Inst inst("icmp", 4, res, Value(name, i32), v0, v);
+        function.add(inst);
+        v0 = res;
+        it++;
+    }
+    return v0;
 }
 
 IR generate(Node* root) {

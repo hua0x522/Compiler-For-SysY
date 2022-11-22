@@ -2,7 +2,7 @@
 
 namespace GEN 
 {
-extern Table tab;
+extern Table table;
 extern vector<int> cbuf;
 extern IR ir;
 
@@ -72,7 +72,7 @@ int conLVal(Node* node) {
     Var var("", "int", 0);
     vector<int> dims;
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
-        if ((*it)->token.tp == "IDENFR") var = tab.findVar((*it)->token.val);
+        if ((*it)->token.tp == "IDENFR") var = table.findVar((*it)->token.val);
         else if ((*it)->token.val == "<Exp>") dims.push_back(conExp(*it));
     }
     int base = 1;
@@ -90,33 +90,24 @@ int gConstExp(Node* node) {
 
 /*     for IR string     */
 void printIR(FILE* fp) {
+    fprintf(fp, "declare i32 @getint()\n");
+    fprintf(fp, "declare void @putint(i32)\n");
+    fprintf(fp, "declare void @putstr(i8*)\n");
+    printBlk(ir.global, fp);
     for (int i = 0; i < ir.functions.size(); i++) {
         printFunction(ir.functions[i], fp);
     }
 }
 
 void printFunction(Function& func, FILE* fp) {
-    if (func.ret.reg == "") {
-        for (int i = 0; i < func.blks.size(); i++) {
-            printBlk(func.blks[0], fp);
-        }
+    if (func.ret.reg == "@getint" || func.ret.reg == "@putint" || func.ret.reg == "@putstr") {
+        return;
     }
-    else if (func.ret.reg == "@getint") {
-        fprintf(fp, "declare i32 @getint()\n");
-    } 
-    else if (func.ret.reg == "@putint") {
-        fprintf(fp, "declare void @putint(i32)\n");
+    fprintf(fp, "%s {\n", func.toString().c_str());
+    for (int i = 0; i < func.blks.size(); i++) {
+        printBlk(func.blks[i], fp);
     }
-    else if (func.ret.reg == "@putch") {
-        fprintf(fp, "declare void @putch(i32)\n");
-    }
-    else { 
-        fprintf(fp, "%s {\n", func.toString().c_str());
-        for (int i = 0; i < func.blks.size(); i++) {
-            printBlk(func.blks[0], fp);
-        }
-        fprintf(fp, "}\n");
-    }
+    fprintf(fp, "}\n");
 }
 
 void printBlk(Blk& blk, FILE* fp) {

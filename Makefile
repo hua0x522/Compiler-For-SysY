@@ -33,3 +33,7 @@ zip:
 	cp src/main.cpp tmp/ ; \
 	zip -q -r 1.zip tmp; \
 	mv 1.zip /mnt/c/Users/wangxuezhu/Desktop
+
+ll:
+	cp llvm_ir.txt output.ll; \
+	clang output.ll lib.c -o output
