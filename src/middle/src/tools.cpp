@@ -99,10 +99,13 @@ void printIR(FILE* fp) {
     }
 }
 
+string ff;
+
 void printFunction(Function& func, FILE* fp) {
     if (func.ret.reg == "@getint" || func.ret.reg == "@putint" || func.ret.reg == "@putstr") {
         return;
     }
+    ff = func.ret.reg;
     fprintf(fp, "%s {\n", func.toString().c_str());
     for (int i = 0; i < func.blks.size(); i++) {
         printBlk(func.blks[i], fp);
@@ -112,7 +115,10 @@ void printFunction(Function& func, FILE* fp) {
 
 void printBlk(Blk& blk, FILE* fp) {
     for (int i = 0; i < blk.insts.size(); i++) {
-        fprintf(fp, "    %s\n", blk.insts[i].toString().c_str());
+        if (blk.insts[i].name == "label")
+            fprintf(fp, "%s\n", blk.insts[i].toString().c_str());
+        else
+            fprintf(fp, "  %s\n", blk.insts[i].toString().c_str());
     }
 }
 

@@ -559,12 +559,17 @@ Value gUnaryExp(Node* node) {
     else if ((*it)->token.val == "<UnaryOp>") {
         Value v2 = gUnaryExp(*(it+1));
         if ((*it)->sons[0]->token.val == "-") {
-            Value v1(0, i32);
-            Value res(newReg(), i32);
-            if (v2.ty.like(i1)) i1toi32(v2);
-            Inst inst("sub", 3, res, v1, v2);
-            function.add(inst);
-            v2 = res;
+            if (v2.reg == "") {
+                v2.num = -v2.num;
+            }
+            else {
+                Value v1(0, i32);
+                Value res(newReg(), i32);
+                if (v2.ty.like(i1)) i1toi32(v2);
+                Inst inst("sub", 3, res, v1, v2);
+                function.add(inst);
+                v2 = res;
+            }
         } 
         else if ((*it)->sons[0]->token.val == "!") {
             if (v2.ty.like(i1)) i1toi32(v2);

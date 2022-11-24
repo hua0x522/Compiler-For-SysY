@@ -257,10 +257,11 @@ void Function::divBlk() {
         blks[0].insts.insert(blks[0].insts.begin(), br);
     }
     int flag = 0;
+    int exit = 0;
     for (int i = 0; i < blks[0].insts.size(); i++) {
         if (blks[0].insts[i].name == "label") {
             if (!flag) flag = i;
-            if (flag) addBlk();    //label index is 0
+            addBlk();    
         }
         if (flag) add(blks[0].insts[i]); 
     }
@@ -268,6 +269,19 @@ void Function::divBlk() {
     while (blks[0].insts.size() > flag) {
         blks[0].insts.pop_back();
     }
+    // move alloca to begin of the first blk  
+    for (int i = 1; i < blks.size(); i++) {
+        auto j = blks[i].insts.begin();
+        while (j != blks[i].insts.end()) {
+            if ((*(j)).name == "alloca") {
+                Inst inst = *(j);
+                blks[i].insts.erase(j);
+                blks[0].insts.insert(blks[0].insts.begin(), inst);
+            }
+            else j++;
+        }
+    }
+    // to ensure each blk end of ret/br
     for (int i = 0; i < blks.size(); i++) {
         if (i == blks.size()-1) break;
         Inst i1 = blks[i].insts[blks[i].insts.size()-1]; 

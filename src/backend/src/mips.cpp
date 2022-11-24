@@ -61,6 +61,23 @@ string MInst::toString() {
     else if (name == "label") {
         s = ops[0].reg + ":";
     }
+    else if (name == ".asciiz") {
+        string str = "";
+        for (int i = 0; i < ops[1].reg.size(); i++) {
+            if (ops[1].reg[i] == '\n') {
+                str += "\\n";
+            } 
+            else str += ops[1].reg[i];
+        }
+        s = ops[0].reg + ": " + name + " " + "\"" + str + "\"";
+    }
+    else if (name == "bgtz" || name == "beqz") {
+        s = name + " " + ops[0].reg + ", " + ops[1].reg;
+    }
+    else if (name == "seq" || name == "sne" || 
+             name == "sgt" || name == "sge" || name == "slt" || name == "sle") {
+        s = name + " " + ops[0].reg + ", " + ops[1].reg + ", " + ops[2].reg;
+    }
     else if (name == "nop") {
         s = name;
     }
@@ -73,7 +90,7 @@ void Segment::add(MInst i) {
 
 void Segment::print(FILE* fp) {
     for (int i = 0; i < insts.size(); i++) {
-        if (insts[i].name == "label" || insts[i].name == ".space") 
+        if (insts[i].name == "label" || insts[i].name == ".space" || insts[i].name == ".asciiz") 
             fprintf(fp, "%s\n", insts[i].toString().c_str());
         else fprintf(fp, "  %s\n", insts[i].toString().c_str());
     }
