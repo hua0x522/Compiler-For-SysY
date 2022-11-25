@@ -81,6 +81,9 @@ string MInst::toString() {
     else if (name == "nop") {
         s = name;
     }
+    else if (name == "//") {
+        s = ops[0].reg;
+    }
     return s;
 }
 

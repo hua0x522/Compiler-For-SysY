@@ -22,7 +22,7 @@ class Pool
 public:
     vector<Reg> regs;
     vector<string> overflow;
-    int rm_ptr = 0;
+    vector<int> ages;
     Pool(int cnt, ...) {
         va_list args;
         va_start(args, cnt);
@@ -30,6 +30,7 @@ public:
             string s = va_arg(args, const char*);
             Reg reg = Reg(s, "");
             regs.push_back(reg);
+            ages.push_back(0);
         }
     }
     string alloc(string vreg);
@@ -53,10 +54,17 @@ public:
         for (int i = 0; i < regs.size(); i++) {
             if (regs[i].use == v1) {
                 regs[i].use = v2;
+                ages[i] = 0;
             }
         }
     }
     void clean();
+    bool isOverflow(string vreg) {
+        for (int i = 0; i < overflow.size(); i++) {
+            if (overflow[i] == vreg) return true;
+        }
+        return false;
+    }
 };
 
 string val2reg(Value);

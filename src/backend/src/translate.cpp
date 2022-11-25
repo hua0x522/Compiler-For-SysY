@@ -9,27 +9,47 @@ Segment text;
 vector<string> saved;
 map<string, int> table;
 bool isMain;
-Pool pool(24, "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8", "$t9", "$a1", "$a2", "$a3",
-              "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$v1", "$k0", "$k1");
+// Pool pool(24, "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8", "$t9", "$a1", "$a2", "$a3",
+//               "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$v1", "$k0", "$k1");
+Pool pool(4, "$t0", "$t1", "$t2", "$t3");
 
 string Pool::alloc(string vreg) {
+    int idx = -1;
     for (int i = 0; i < regs.size(); i++) {
         if (regs[i].use == "") {
             regs[i].use = vreg;
-            return regs[i].id;
+            idx = i;
+            break;
         }
     }
-    MInst addiu("addiu", 3, Op("$sp"), Op("$sp"), Op(-4));
-    text.add(addiu);
-    MInst sw("sw", 3, Op(regs[rm_ptr].id), Op(0), Op("$sp"));
-    text.add(sw);
-    table["$sp"]  -= 4;
-    table.insert({regs[rm_ptr].use, table["$sp"]});
-    overflow.push_back(regs[rm_ptr].use);
-    regs[rm_ptr].use = vreg;
-    string id = regs[rm_ptr].id;
-    rm_ptr = (rm_ptr + 1) % regs.size();
-    return id;
+    if (idx != -1) {
+        for (int i = 0; i < regs.size(); i++) {
+            if (i == idx) ages[i] = 0;
+            else ages[i] += 1;
+        }
+        return regs[idx].id;
+    }
+    else {
+        int age = 0;
+        for (int i = 0; i < regs.size(); i++) {
+            if (ages[i] >= age) {
+                age = ages[i];
+                idx = i;
+            }
+        }
+        MInst addiu("addiu", 3, Op("$sp"), Op("$sp"), Op(-4));
+        text.add(addiu);
+        MInst sw("sw", 3, Op(regs[idx].id), Op(0), Op("$sp"));
+        text.add(sw);
+        text.add(MInst("//", 1, Op("### " + regs[idx].id + " overflow, " + 
+            regs[idx].use + " give to " + vreg)));
+        table["$sp"]  -= 4;
+        table.insert({regs[idx].use, table["$sp"]});
+        overflow.push_back(regs[idx].use);
+        regs[idx].use = vreg;
+        string id = regs[idx].id;
+        return id;
+    }
 }
 
 void Pool::clean() {
@@ -60,8 +80,8 @@ string val2reg(Value v) {
         reg = pool.query(v.reg);
     }
     else {
-        int offset = table[v.reg] - table["$sp"];
         reg = pool.alloc(v.reg);
+        int offset = table[v.reg] - table["$sp"];
         MInst lw("lw", 3, Op(reg), Op(offset), Op("$sp"));
         text.add(lw);
     }
@@ -69,6 +89,9 @@ string val2reg(Value v) {
 }
 
 string val2reg_addr(Value v) {
+    if (pool.isOverflow(v.reg)) {
+        return val2reg(v);
+    }
     string reg;
     if (v.reg[0] == '@') { 
         reg = pool.alloc(v.reg);
@@ -80,8 +103,8 @@ string val2reg_addr(Value v) {
         reg = pool.query(v.reg);
     }
     else {
-        int offset = table[v.reg] - table["$sp"];
         reg = pool.alloc(v.reg);
+        int offset = table[v.reg] - table["$sp"];
         MInst addiu("addiu", 3, Op(reg), Op("$sp"), Op(offset));
         text.add(addiu); 
     }

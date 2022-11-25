@@ -270,16 +270,20 @@ void Function::divBlk() {
         blks[0].insts.pop_back();
     }
     // move alloca to begin of the first blk  
-    for (int i = 1; i < blks.size(); i++) {
+    vector<Inst> temp;
+    for (int i = 0; i < blks.size(); i++) {
         auto j = blks[i].insts.begin();
         while (j != blks[i].insts.end()) {
             if ((*(j)).name == "alloca") {
                 Inst inst = *(j);
                 blks[i].insts.erase(j);
-                blks[0].insts.insert(blks[0].insts.begin(), inst);
+                temp.push_back(inst);
             }
             else j++;
         }
+    }
+    for (int i = 0; i < temp.size(); i++) {
+        blks[0].insts.insert(blks[0].insts.begin(), temp[i]);
     }
     // to ensure each blk end of ret/br
     for (int i = 0; i < blks.size(); i++) {
