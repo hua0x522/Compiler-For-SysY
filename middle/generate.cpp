@@ -90,12 +90,12 @@ void gCompUnit(Node* node) {
         it++;
         function.checkRet();
         function.name = function.ret.reg;
-        function.divBlk();
+        function.processBlk();
         ir.add(function);
         function.clear();
     }
     gMainFuncDef(*it);
-    function.divBlk();
+    function.processBlk();
     ir.add(function);
     function.clear();
     ir.global = global; //update constant string 
@@ -140,8 +140,8 @@ void gConstDef(Node* node) {
     }
     if (val.ty.shape.size() == 0) {
         Value v(cbuf[var.pos], i32);
-        Inst inst("store", 2, v, val);
-        function.add(inst);
+        Inst store("store", 2, v, val);
+        function.add(store);
     }
     else {
         for (int i = 0; i < cnt; i++) {
@@ -172,7 +172,6 @@ void gVarDef(Node* node) {
     Var var("", "int", 0);
     if (!blocks) var.pos = cbuf.size();
     else var.pos = vbuf.size();
-    auto it = node->sons.begin();
     int flag = 0;
     for (auto it = node->sons.begin(); it != node->sons.end(); it++) {
         if ((*it)->token.tp == "IDENFR") var.id = (*it)->token.val;
@@ -205,8 +204,8 @@ void gVarDef(Node* node) {
     }
     if (val.ty.shape.size() == 0) {
         Value v = vbuf[var.pos];
-        Inst inst("store", 2, v, val);
-        function.add(inst);
+        Inst store("store", 2, v, val);
+        function.add(store);
     }
     else {
         for (int i = 0; i < cnt; i++) {
@@ -722,9 +721,6 @@ Value gRelExp(Node* node) {
 
 IR generate(Node* root) {
     gCompUnit(root);
-//    FILE* fp = fopen("llvm_ir.txt", "w");
-//    printIR(ir, fp);
-//    fclose(fp);
     return ir;
 }
 

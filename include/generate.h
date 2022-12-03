@@ -59,5 +59,9 @@ int gConstExp(Node*);
 void printIR(IR&, FILE*);
 void printFunction(Function&, FILE*);
 void printBlk(Blk&, FILE*);
+
+void addMove(Blk&, Blk&);
+void removePhi(Function&);
+void removePhi(IR&);
 }
 #endif

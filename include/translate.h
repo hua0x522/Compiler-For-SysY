@@ -5,6 +5,7 @@
 #include "ir.h"
 #include <cstdio>
 #include <map>
+#include <set>
 
 namespace TRANS
 {
@@ -21,8 +22,8 @@ class Pool
 {
 public:
     vector<Reg> regs;
-    vector<string> overflow;
     vector<int> ages;
+    int counter = 0;
     Pool(int cnt, ...) {
         va_list args;
         va_start(args, cnt);
@@ -34,13 +35,13 @@ public:
         }
     }
     string alloc(string vreg);
+    void clean();
     string query(string vreg) {
         for (int i = 0; i < regs.size(); i++) {
             if (regs[i].use == vreg) {
                 return regs[i].id;
             }
         }
-        printf("%s Query Fault\n", vreg.c_str());
         return "";
     }
     void free(string id) {
@@ -58,16 +59,16 @@ public:
             }
         }
     }
-    void clean();
-    bool isOverflow(string vreg) {
-        for (int i = 0; i < overflow.size(); i++) {
-            if (overflow[i] == vreg) return true;
+    void reset() {
+        for (int i = 0; i < regs.size(); i++) {
+            regs[i].use = "";
+            ages[i] = counter;
         }
-        return false;
     }
 };
 
-string val2reg(Value);
+string val2reg(Value, bool);
+string getAddr(Value);
 void global_data(Inst&);
 void local_data(Inst&);
 void binary(Inst&);
@@ -87,6 +88,7 @@ void transFunc(Function&);
 void transIR(IR&);
 void translate(IR&);
 
+bool useful(string, int, int, vector<int>&);
 }
 
 #endif

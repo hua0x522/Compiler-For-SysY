@@ -19,8 +19,12 @@ MInst::MInst(string n, int cnt, ...) {
 
 string MInst::toString() {
     string s;
-    if (name == ".space") {
-        s = ops[0].reg + ":" + " .space " + i2s(ops[1].num);
+    if (name == ".word") {
+        s = ops[0].reg + ":" + " .word ";
+        for (int i = 1; i < ops.size(); i++) {
+            if (i != 1) s += ", ";
+            s += i2s(ops[i].num);
+        }
     }
     else if (name == "li") {
         s = "li " + ops[0].reg + ", " + i2s(ops[1].num); 

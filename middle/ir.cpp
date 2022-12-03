@@ -201,7 +201,22 @@ string Inst::toString() {
             s += "[" + ops[i].toString() + ", %" + ops[i+1].toString() + "]";
         }
     }
+    else if (name == "move") {
+        s += "move " + ops[0].toString() + " to " + ops[1].toString();
+    }
     return s;
+}
+
+string Inst::getRes() {
+    if (name == "global" || name == "constant" || name == "alloca" || name == "add" || name == "sub" ||
+        name == "mul" || name == "sdiv" || name == "srem" || name == "load" || name == "getelementptr inbounds" ||
+        name == "icmp" || name == "zext") {
+        return ops[0].toString();
+    }
+    if (name == "move") {
+        return ops[1].toString();
+    }
+    return "";
 }
 
 void Blk::add(Inst i) { 
@@ -221,9 +236,13 @@ Value Blk::getVal(string reg) {
     return Value();
 }
 
-void Function::add(Inst i) { (*(blks.end()-1)).add(i); }
+void Function::add(Inst i) {
+    (*(blks.end()-1)).add(i);
+}
 
-void Function::addBlk() { blks.push_back(Blk()); }
+void Function::addBlk(string n) {
+    blks.push_back(Blk(n));
+}
 
 void Function::clear() {
     blks.clear();
@@ -251,9 +270,9 @@ string Function::toString() {
     return s;
 }
 
-int Function::getBlk(string name) {
+int Function::getBlk(string n) {
     for (int i = 0; i < blks.size(); i++) {
-        if (blks[i].name == name) return i;
+        if (blks[i].name == n) return i;
     }
     return -1;
 }
@@ -270,26 +289,45 @@ void Function::checkRet() {
     add(inst);
 }
 
+void Function::mergeBlk() {
+    for (auto bb = blks.begin()+1; bb != blks.end(); bb++) {
+        for (auto it = bb->insts.begin(); it != bb->insts.end(); it++) {
+            blks[0].add(*it);
+        }
+    }
+    while (blks.size() > 1) {
+        blks.pop_back();
+    }
+}
+
 void Function::divBlk() {
+    int BB0end = 0;
+    for (int i = 1; i < blks[0].insts.size(); i++) {
+        if (blks[0].insts[i].name == "label") {
+            if (!BB0end) BB0end = i;
+            addBlk(blks[0].insts[i].ops[0].toString());
+        }
+        if (BB0end) add(blks[0].insts[i]);
+    }
+    if (!BB0end) return;
+    while (blks[0].insts.size() > BB0end) {
+        blks[0].insts.pop_back();
+    }
+}
+
+void Function::processBlk() {
     if (blks[0].insts[0].name == "label") {
         Inst br("br", 1, blks[0].insts[0].ops[0]);
         blks[0].insts.insert(blks[0].insts.begin(), br);
     }
-    int flag = 0;
-    int exit = 0;
-    for (int i = 0; i < blks[0].insts.size(); i++) {
-        if (blks[0].insts[i].name == "label") {
-            if (!flag) flag = i;
-            addBlk();
-            (blks.end()-1)->name = blks[0].insts[i].ops[0].toString();
-        }
-        if (flag) add(blks[0].insts[i]); 
-    }
-    if (!flag) return;
-    while (blks[0].insts.size() > flag) {
-        blks[0].insts.pop_back();
-    }
-    // move alloca to begin of the first blk  
+    string l = GEN::newLabel();
+    Inst label("label", 1, Value(l, Type()));
+    blks[0].insts.insert(blks[0].insts.begin(), label);
+    blks[0].name = l;
+
+    divBlk();
+
+    // move alloca to begin of the first blk
     vector<Inst> temp;
     for (int i = 0; i < blks.size(); i++) {
         auto j = blks[i].insts.begin();
@@ -303,18 +341,20 @@ void Function::divBlk() {
         }
     }
     for (int i = 0; i < temp.size(); i++) {
-        blks[0].insts.insert(blks[0].insts.begin(), temp[i]);
+        blks[0].insts.insert(blks[0].insts.begin()+1, temp[i]);
     }
+
     // to ensure each blk end of ret/br
     for (int i = 0; i < blks.size(); i++) {
         if (i == blks.size()-1) break;
-        Inst i1 = blks[i].insts[blks[i].insts.size()-1]; 
+        Inst i1 = blks[i].insts[blks[i].insts.size()-1];
         Inst i2 = blks[i+1].insts[0];
         if (i1.name != "ret" && i1.name != "br") {
             Inst inst("br", 1, i2.ops[0]);
-            blks[i].add(inst); 
+            blks[i].add(inst);
         }
     }
+
     // to ensure only one ret/br in a blk
     for (int i = 0; i < blks.size(); i++) {
         bool isEnd = false;
@@ -327,9 +367,6 @@ void Function::divBlk() {
             }
         }
     }
-    Inst label("label", 1, Value("BB0", Type()));
-    blks[0].insts.insert(blks[0].insts.begin(), label);
-    blks[0].name = "BB0";
 }
 
 void IR::add(Function f) {
@@ -348,8 +385,8 @@ Value IR::getVal(string reg) {
     Value val = global.getVal(reg);
     if (val.reg == reg) return val;
     for (int i = 0; i < functions.size(); i++) {
-        Value val = functions[i].getVal(reg);
-        if (val.reg == reg) return val;
+        Value v = functions[i].getVal(reg);
+        if (v.reg == reg) return v;
     }
     return Value();
 }

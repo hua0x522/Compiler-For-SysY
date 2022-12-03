@@ -19,8 +19,12 @@ void mem2reg(IR& ir) {
     for (int i = 0; i < ir.functions.size(); i++) {
         removeFuncAlloc(ir.functions[i]);
     }
-//    FILE* fp = fopen("mem2reg.txt", "w");
     FILE* fp = fopen("llvm_ir.txt", "w");
+    GEN::printIR(ir, fp);
+    fclose(fp);
+    GEN::removePhi(ir);
+    constantPropagation(ir);
+    fp = fopen("mem2reg.txt", "w");
     GEN::printIR(ir, fp);
     fclose(fp);
 }
@@ -59,7 +63,7 @@ void removeFuncAlloc(Function& func) {
 void removeBlkAlloc(Blk& block) {
     auto it = block.insts.begin();
     while (it != block.insts.end()) {
-        if (it->name == "alloca" && it->ops[0].ty.ptr == 1 && it->ops[0].getDim() == 0) {
+        if (it->name == "alloca" && it->ops[0].getDim() == 0) {
             addPhi(it->ops[0]);
             vector<int> vis(f->blks.size(), 0);
             vector<Value> avatars(f->blks.size(), Value(0, i32));

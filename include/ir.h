@@ -7,7 +7,9 @@
 using namespace std;
 
 string i2s(int);
-
+namespace GEN{
+    string newLabel();
+}
 
 class Type 
 {
@@ -50,6 +52,7 @@ public:
     Inst(string, int cnt, ...);
     Value getVal(string reg);
     string toString();
+    string getRes();
 };
 
 class Blk
@@ -58,6 +61,9 @@ public:
     vector<Inst> insts;
     string name;
     Blk() {}
+    Blk(string n) {
+        this->name = n;
+    }
     void add(Inst i);
     void addHead(Inst i);
     Value getVal(string reg);
@@ -72,12 +78,14 @@ public:
     string name;
     Function() { blks.push_back(Blk()); }
     void add(Inst i);
-    void addBlk();
+    void addBlk(string);
     void clear();
     Value getVal(string reg);
     string toString();
     void checkRet();
+    void mergeBlk();
     void divBlk();
+    void processBlk();
     int getBlk(string);
 };
 
